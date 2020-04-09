@@ -13,17 +13,18 @@
 # limitations under the License.
 
 FROM python:3.8
- 
+
 # show python logs as they occur
 ENV PYTHONUNBUFFERED=0
 
 # get packages
 WORKDIR /contacts
-COPY requirements.txt .
+COPY /contacts/requirements.txt .
 RUN pip install --trusted-host pypi.python.org -r requirements.txt
 
 # add files into working directory
-COPY *.py .
+COPY pylibs/ ./pylibs
+COPY /contacts/*.py .
 
 
 ENTRYPOINT ["python", "/contacts/contacts.py"]

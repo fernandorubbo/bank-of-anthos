@@ -19,11 +19,12 @@ ENV PYTHONUNBUFFERED=0
 
 # get packages
 WORKDIR /userservice
-COPY requirements.txt .
+COPY /userservice/requirements.txt .
 RUN pip install --trusted-host pypi.python.org -r requirements.txt
 
 # add files into working directory
-COPY *.py .
+COPY pylibs/ ./pylibs
+COPY /userservice/*.py .
 
 
 ENTRYPOINT ["python", "/userservice/userservice.py"]

@@ -26,7 +26,7 @@ import sys
 from flask import Flask, jsonify, request
 import bleach
 import jwt
-from sqlalchemy import create_engine, MetaData, Table, Column, String, Boolean
+from pylibs.db.database_helper import DatabaseHelper
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
 logging.basicConfig(level=os.environ.get('LOGLEVEL', 'INFO').upper())
@@ -64,7 +64,7 @@ def get_contacts(username):
         auth_payload = jwt.decode(token, key=PUBLIC_KEY, algorithms='RS256')
         if username != auth_payload['user']:
             raise PermissionError
-        contacts_list = _get_contacts(username)
+        contacts_list = contacts_db.get_contacts(username)
         return jsonify(contacts_list), 200
     except (PermissionError, jwt.exceptions.InvalidTokenError):
         return jsonify({'msg': 'authentication denied'}), 401
@@ -105,7 +105,7 @@ def add_contact(username):
                 req['routing_num'] == LOCAL_ROUTING):
             return jsonify({'msg': 'may not add yourself to contacts'}), 409
 
-        _add_contact(username, req)
+        contacts_db.add_contact(username, req)
 
     except (PermissionError, jwt.exceptions.InvalidTokenError):
         return jsonify({'msg': 'authentication denied'}), 401
@@ -143,54 +143,11 @@ def _validate_new_contact(req):
         raise UserWarning('invalid account label')
 
 
-def _add_contact(username, contact):
-    """Add a contact under the specified username.
-
-    Params: username - the username of the user
-            contact - a key/value dict of attributes describing a new contact
-                      {'label': label, 'account_num': account_num, ...}
-    Raises: SQLAlchemyError if there was an issue with the database
-    """
-    data = {'username': username,
-            'label': contact['label'],
-            'account_num': contact['account_num'],
-            'routing_num': contact['routing_num'],
-            'is_external': contact['is_external']}
-    statement = CONTACTS_TABLE.insert().values(data)
-    logging.debug('QUERY: %s', str(statement))
-    DB_CONN.execute(statement)
-
-
-def _get_contacts(username):
-    """Get a list of contacts for the specified username.
-
-    Params: username - the username of the user
-    Return: a list of contacts in the form of key/value attribute dicts,
-            [ {'label': contact1, ...}, {'label': contact2, ...}, ...]
-    Raises: SQLAlchemyError if there was an issue with the database
-    """
-    contacts = list()
-    statement = CONTACTS_TABLE.select().where(
-        CONTACTS_TABLE.c.username == username)
-    logging.debug('QUERY: %s', str(statement))
-    result = DB_CONN.execute(statement)
-    logging.debug('RESULT: %s', str(result))
-    for row in result:
-        contact = {
-            'label': row['label'],
-            'account_num': row['account_num'],
-            'routing_num': row['routing_num'],
-            'is_external': row['is_external']}
-        contacts.append(contact)
-
-    return contacts
-
-
 @atexit.register
 def _shutdown():
     """Executed when web app is terminated."""
     try:
-        DB_CONN.close()
+        contacts_db.close()
     except NameError:
         # catch name error when DB_CONN not set up
         pass
@@ -215,14 +172,7 @@ if __name__ == '__main__':
 
     # Configure database connection
     try:
-        ACCOUNTS_DB = create_engine(os.environ.get('ACCOUNTS_DB_URI'))
-        CONTACTS_TABLE = Table('contacts', MetaData(ACCOUNTS_DB),
-                               Column('username', String),
-                               Column('label', String),
-                               Column('account_num', String),
-                               Column('routing_num', String),
-                               Column('is_external', Boolean))
-        DB_CONN = ACCOUNTS_DB.connect()
+        contacts_db = DatabaseHelper("SQL", os.environ.get("ACCOUNTS_DB_URI")).database
     except OperationalError:
         logging.critical("database connection failed")
         sys.exit(1)

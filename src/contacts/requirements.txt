@@ -1,6 +1,8 @@
+bcrypt
 bleach
 cryptography
 flask
 psycopg2
 pyjwt
 sqlalchemy
+mysqlclient

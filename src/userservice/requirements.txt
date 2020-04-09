@@ -5,3 +5,4 @@ flask
 psycopg2
 pyjwt
 sqlalchemy
+mysqlclient
