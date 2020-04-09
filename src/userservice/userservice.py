@@ -20,7 +20,6 @@ import atexit
 from datetime import datetime, timedelta
 import logging
 import os
-import random
 import sys
 
 from flask import Flask, jsonify, request
@@ -76,11 +75,11 @@ def create_user():
         _validate_new_user(req)
 
         # Check if user already exists
-        if users_db.get_user(req["username"]) is not None:
+        if USERS_DB.get_user(req["username"]) is not None:
             raise NameError('user {} already exists'.format(req['username']))
 
         # Create the user
-        users_db.add_user(req)
+        USERS_DB.add_user(req)
 
     except UserWarning as warn:
         return jsonify({'msg': str(warn)}), 400
@@ -134,7 +133,7 @@ def get_token():
 
     # Get user data
     try:
-        user = users_db.get_user(username)
+        user = USERS_DB.get_user(username)
         if user is None:
             raise LookupError('user {} does not exist'.format(user))
 
@@ -165,7 +164,7 @@ def get_token():
 def _shutdown():
     """Executed when web app is terminated."""
     try:
-        users_db.close()
+        USERS_DB.close()
     except NameError:
         # catch name error when DB_CONN not set up
         pass
@@ -192,7 +191,7 @@ if __name__ == '__main__':
 
     # Configure database connection
     try:
-        users_db = DatabaseHelper("SQL", os.environ.get("ACCOUNTS_DB_URI")).database
+        USERS_DB = DatabaseHelper("SQL", os.environ.get("ACCOUNTS_DB_URI")).database
     except OperationalError:
         logging.critical("database connection failed")
         sys.exit(1)

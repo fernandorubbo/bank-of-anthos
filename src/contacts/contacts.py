@@ -64,7 +64,7 @@ def get_contacts(username):
         auth_payload = jwt.decode(token, key=PUBLIC_KEY, algorithms='RS256')
         if username != auth_payload['user']:
             raise PermissionError
-        contacts_list = contacts_db.get_contacts(username)
+        contacts_list = CONTACTS_DB.get_contacts(username)
         return jsonify(contacts_list), 200
     except (PermissionError, jwt.exceptions.InvalidTokenError):
         return jsonify({'msg': 'authentication denied'}), 401
@@ -105,7 +105,7 @@ def add_contact(username):
                 req['routing_num'] == LOCAL_ROUTING):
             return jsonify({'msg': 'may not add yourself to contacts'}), 409
 
-        contacts_db.add_contact(username, req)
+        CONTACTS_DB.add_contact(username, req)
 
     except (PermissionError, jwt.exceptions.InvalidTokenError):
         return jsonify({'msg': 'authentication denied'}), 401
@@ -147,7 +147,7 @@ def _validate_new_contact(req):
 def _shutdown():
     """Executed when web app is terminated."""
     try:
-        contacts_db.close()
+        CONTACTS_DB.close()
     except NameError:
         # catch name error when DB_CONN not set up
         pass
@@ -172,7 +172,7 @@ if __name__ == '__main__':
 
     # Configure database connection
     try:
-        contacts_db = DatabaseHelper("SQL", os.environ.get("ACCOUNTS_DB_URI")).database
+        CONTACTS_DB = DatabaseHelper("SQL", os.environ.get("ACCOUNTS_DB_URI")).database
     except OperationalError:
         logging.critical("database connection failed")
         sys.exit(1)
